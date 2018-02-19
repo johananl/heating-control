@@ -14,7 +14,10 @@ type Reading struct {
 	Value       float64 `json:"value"`
 }
 
-type Controller struct{}
+type Controller struct {
+	brokerURI     string
+	readingsTopic string
+}
 
 var handlerReading mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
 	r := Reading{}
@@ -41,7 +44,7 @@ func (c *Controller) Run() (chan<- bool, <-chan error, *sync.WaitGroup) {
 
 		// Set MQTT client options
 		opts := mqtt.NewClientOptions()
-		opts.AddBroker("tcp://dev:1883")
+		opts.AddBroker(c.brokerURI)
 
 		// Connect to MQTT broker
 		client := mqtt.NewClient(opts)
@@ -59,7 +62,7 @@ func (c *Controller) Run() (chan<- bool, <-chan error, *sync.WaitGroup) {
 		}()
 
 		// Subscribe to readings topic
-		if token := client.Subscribe("/readings/temperature", 0, handlerReading); token.Wait() && token.Error() != nil {
+		if token := client.Subscribe(c.readingsTopic, 0, handlerReading); token.Wait() && token.Error() != nil {
 			err <- token.Error()
 			return
 		}
@@ -67,7 +70,7 @@ func (c *Controller) Run() (chan<- bool, <-chan error, *sync.WaitGroup) {
 		// Wait for stop signal
 		<-stop
 		log.Println("Stopping controller")
-		if token := client.Unsubscribe("/readings/temperature"); token.Wait() && token.Error() != nil {
+		if token := client.Unsubscribe(c.readingsTopic); token.Wait() && token.Error() != nil {
 			err <- token.Error()
 		}
 	}()
@@ -76,6 +79,9 @@ func (c *Controller) Run() (chan<- bool, <-chan error, *sync.WaitGroup) {
 }
 
 // NewController creates a new controller and returns a pointer to it.
-func NewController() *Controller {
-	return &Controller{}
+func NewController(brokerURI string, readingsTopic string) *Controller {
+	return &Controller{
+		brokerURI:     brokerURI,
+		readingsTopic: readingsTopic,
+	}
 }

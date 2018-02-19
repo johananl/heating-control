@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"os"
 	"os/signal"
@@ -8,10 +9,19 @@ import (
 	"github.com/johananl/heating-control/controller"
 )
 
+var (
+	brokerURI     string
+	readingsTopic string
+)
+
 func main() {
 	log.SetFlags(log.Lmicroseconds | log.Lshortfile)
 
-	c := controller.NewController()
+	flag.StringVar(&brokerURI, "brokeruri", "tcp://localhost:1883", "URI of MQTT broker. Example: tcp://mybroker:1883")
+	flag.StringVar(&readingsTopic, "readingstopic", "/readings/temperature", "MQTT topic to subscribe to for readings.")
+	flag.Parse()
+
+	c := controller.NewController(brokerURI, readingsTopic)
 
 	stop, err, wg := c.Run()
 
