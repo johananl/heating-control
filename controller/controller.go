@@ -27,6 +27,8 @@ var handlerReading mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Messa
 	log.Printf("Received reading: sensor %v temp %v", r.SensorID, r.Value)
 }
 
+// Run starts the controller goroutine. It returns a quit channel and a waitgroup for graceful
+// shutdown.
 func (c *Controller) Run() (chan<- bool, *sync.WaitGroup) {
 	stop := make(chan bool)
 	var wg sync.WaitGroup
