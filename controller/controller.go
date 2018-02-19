@@ -21,17 +21,6 @@ type Controller struct {
 	readingsTopic string
 }
 
-var handlerReading mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
-	r := Reading{}
-	err := json.Unmarshal(msg.Payload(), &r)
-	if err != nil {
-		log.Println("Error parsing JSON message: ", err)
-		return
-	}
-
-	log.Printf("Received reading: sensor %v temp %v", r.SensorID, r.Value)
-}
-
 // Run starts the controller goroutine. It returns a quit channel, an error channel and a waitgroup
 // for graceful shutdown.
 func (c *Controller) Run() (chan<- bool, <-chan error, *sync.WaitGroup) {
@@ -64,7 +53,18 @@ func (c *Controller) Run() (chan<- bool, <-chan error, *sync.WaitGroup) {
 		}()
 
 		// Subscribe to readings topic
-		if token := client.Subscribe(c.readingsTopic, 0, handlerReading); token.Wait() && token.Error() != nil {
+		var handler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
+			r := Reading{}
+			err := json.Unmarshal(msg.Payload(), &r)
+			if err != nil {
+				log.Println("Error parsing JSON message: ", err)
+				return
+			}
+
+			log.Printf("Received reading: sensor %v temp %v", r.SensorID, r.Value)
+		}
+
+		if token := client.Subscribe(c.readingsTopic, 0, handler); token.Wait() && token.Error() != nil {
 			err <- token.Error()
 			return
 		}
