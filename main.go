@@ -13,15 +13,20 @@ func main() {
 
 	c := controller.NewController()
 
-	stop, wg := c.Run()
+	stop, err, wg := c.Run()
 
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, os.Interrupt)
 
-	<-shutdown
+	// Exit on error or shutdown signal
+	select {
+	case e := <-err:
+		log.Println("Got error from controller: ", e.Error())
+	case <-shutdown:
+		log.Println("Got shutdown signal")
+		stop <- true
+		wg.Wait()
+	}
 
-	log.Println("Shutting down")
-	stop <- true
-	wg.Wait()
 	log.Println("Shutdown complete")
 }
