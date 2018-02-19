@@ -8,12 +8,14 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
+// Reading represents a temperator reading sent to the controller from a sensor.
 type Reading struct {
 	SensorID    string  `json:"sensorID"`
 	ReadingType string  `json:"type"`
 	Value       float64 `json:"value"`
 }
 
+// Controller represents a heating controller.
 type Controller struct {
 	brokerURI     string
 	readingsTopic string
