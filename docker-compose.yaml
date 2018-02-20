@@ -1,0 +1,11 @@
+version: '3'
+services:
+  app:
+    image: heating-control:latest
+    depends_on:
+    - broker
+    command: /heating-control -brokeruri tcp://broker:1883
+  broker:
+    image: eclipse-mosquitto
+    ports:
+    - "1883:1883"
