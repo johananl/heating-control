@@ -57,6 +57,7 @@ func (c *Controller) start() (mqtt.Client, error) {
 		}()
 	}
 
+	log.Println("Subscribing to readings topic")
 	if token := client.Subscribe(c.readingsTopic, 0, handler); token.Wait() && token.Error() != nil {
 		return client, token.Error()
 	}
@@ -94,6 +95,7 @@ func (c *Controller) Run() (chan<- bool, <-chan error, *sync.WaitGroup) {
 			errChan <- err
 			return
 		}
+		log.Println("Controller ready")
 
 		// Wait for stop signal
 		<-stop
