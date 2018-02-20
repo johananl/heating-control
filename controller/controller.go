@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"sync"
-	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
@@ -16,17 +15,50 @@ type Reading struct {
 	Value       float64 `json:"value"`
 }
 
+// ValveOpenness represents a message sent to an actuator by the controller.
+type ValveOpenness struct {
+	Level int `json:"level"`
+}
+
 // Controller represents a heating controller.
 type Controller struct {
-	brokerURI     string
-	readingsTopic string
+	brokerURI      string
+	readingsTopic  string
+	actuatorsTopic string
+	targetTemp     float64
+	client         mqtt.Client
 }
 
 // ProcessReading receives a Reading and executes an appropriate action, if any, based on it.
 func (c *Controller) ProcessReading(r Reading) {
 	log.Printf("Received reading: sensor %v temp %v", r.SensorID, r.Value)
-	time.Sleep(2 * time.Second)
-	log.Printf("Done processing reading")
+
+	// Set valve openness
+	if r.Value < c.targetTemp {
+		log.Println("Too cold! Opening valve.")
+		c.SetValveOpenness(100)
+	} else if r.Value > c.targetTemp {
+		log.Println("Too hot! Closing valve.")
+		c.SetValveOpenness(0)
+	} else {
+		log.Println("Target temperature achieved!")
+		return
+	}
+}
+
+// SetValveOpenness sets the openness of a valve by publishing to an actuators topic.
+func (c *Controller) SetValveOpenness(v int) {
+	vo := ValveOpenness{Level: v}
+	json, err := json.Marshal(vo)
+	if err != nil {
+		log.Println(err.Error())
+		return
+	}
+
+	log.Printf("Setting valve openness to %d", vo.Level)
+	log.Println(string(json))
+	token := c.client.Publish(c.actuatorsTopic, 0, false, json)
+	token.Wait()
 }
 
 // Initialize the MQTT client, connect to the broker and subscribe to the readings topic.
@@ -41,6 +73,7 @@ func (c *Controller) start() (mqtt.Client, error) {
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
 		return client, token.Error()
 	}
+	c.client = client
 	log.Println("Connected to MQTT broker")
 
 	// Subscribe to readings topic
@@ -111,9 +144,11 @@ func (c *Controller) Run() (chan<- bool, <-chan error, *sync.WaitGroup) {
 }
 
 // NewController creates a new controller and returns a pointer to it.
-func NewController(brokerURI string, readingsTopic string) *Controller {
+func NewController(brokerURI, readingsTopic, actuatorsTopic string, targetTemp float64) *Controller {
 	return &Controller{
-		brokerURI:     brokerURI,
-		readingsTopic: readingsTopic,
+		brokerURI:      brokerURI,
+		readingsTopic:  readingsTopic,
+		actuatorsTopic: actuatorsTopic,
+		targetTemp:     targetTemp,
 	}
 }

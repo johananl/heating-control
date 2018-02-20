@@ -10,8 +10,9 @@ import (
 )
 
 var (
-	brokerURI     string
-	readingsTopic string
+	brokerURI      string
+	readingsTopic  string
+	actuatorsTopic string
 )
 
 func main() {
@@ -19,9 +20,10 @@ func main() {
 
 	flag.StringVar(&brokerURI, "brokeruri", "tcp://localhost:1883", "URI of MQTT broker. Example: tcp://mybroker:1883")
 	flag.StringVar(&readingsTopic, "readingstopic", "/readings/temperature", "MQTT topic to subscribe to for readings.")
+	flag.StringVar(&actuatorsTopic, "actuatorstopic", "/actuators/room-1", "MQTT topic for controlling actuators.")
 	flag.Parse()
 
-	c := controller.NewController(brokerURI, readingsTopic)
+	c := controller.NewController(brokerURI, readingsTopic, actuatorsTopic, 22.0)
 
 	stop, err, wg := c.Run()
 
