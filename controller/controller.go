@@ -43,12 +43,6 @@ func (c *Controller) start() (mqtt.Client, error) {
 	}
 	log.Println("Connected to MQTT broker")
 
-	// defer func() {
-	// 	log.Println("Disconnecting from MQTT broker")
-	// 	client.Disconnect(1000)
-	// 	log.Println("Disconnected from MQTT broker")
-	// }()
-
 	// Subscribe to readings topic
 	var handler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
 		go func() {
