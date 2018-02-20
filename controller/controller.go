@@ -56,7 +56,6 @@ func (c *Controller) SetValveOpenness(v int) {
 	}
 
 	log.Printf("Setting valve openness to %d", vo.Level)
-	log.Println(string(json))
 	token := c.client.Publish(c.actuatorsTopic, 0, false, json)
 	token.Wait()
 }
