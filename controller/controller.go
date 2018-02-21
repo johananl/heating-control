@@ -30,6 +30,8 @@ type Controller struct {
 }
 
 // ProcessReading receives a Reading and executes an appropriate action, if any, based on it.
+// This function contains the controller's "policy" or logic, and is therefore one of the main
+// candidates for optimization.
 func (c *Controller) ProcessReading(r Reading) {
 	log.Printf("Received reading: sensor %v temp %v", r.SensorID, r.Value)
 
