@@ -5,7 +5,7 @@ import (
 	"log"
 	"sync"
 
-	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/eclipse/paho.mqtt.golang"
 )
 
 // Reading represents a temperator reading sent to the controller from a sensor.
