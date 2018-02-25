@@ -62,21 +62,31 @@ func (c *Controller) SetValveOpenness(v int) {
 	token.Wait()
 }
 
-// Initialize the MQTT client, connect to the broker and subscribe to the readings topic.
-func (c *Controller) start() (mqtt.Client, error) {
+// Connects to the MQTT broker.
+func (c *Controller) connect() error {
 	// Set MQTT client options
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(c.brokerURI)
 
 	// Connect to MQTT broker
-	client := mqtt.NewClient(opts)
+	c.client = mqtt.NewClient(opts)
 	log.Println("Connecting to MQTT broker")
-	if token := client.Connect(); token.Wait() && token.Error() != nil {
-		return client, token.Error()
+	if token := c.client.Connect(); token.Wait() && token.Error() != nil {
+		return token.Error()
 	}
-	c.client = client
 	log.Println("Connected to MQTT broker")
 
+	return nil
+}
+
+// Disconnects from the MQTT broker.
+func (c *Controller) disconnect() {
+	log.Println("Disconnecting from MQTT broker")
+	c.client.Disconnect(1000)
+}
+
+// Subscribes to the readings MQTT topic.
+func (c *Controller) subscribe() error {
 	// Handler function for incoming readings. This function is called every time
 	// a temperature reading is received on the readings MQTT topic.
 	var handler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
@@ -94,22 +104,46 @@ func (c *Controller) start() (mqtt.Client, error) {
 
 	// Subscribe to readings topic
 	log.Println("Subscribing to readings topic")
-	if token := client.Subscribe(c.readingsTopic, 0, handler); token.Wait() && token.Error() != nil {
-		return client, token.Error()
-	}
-
-	return client, nil
-}
-
-// Unsubscribe from the readings topic and disconnect the MQTT client.
-func (c *Controller) stop(client mqtt.Client) error {
-	log.Println("Unsubscribing from readings topic")
-	if token := client.Unsubscribe(c.readingsTopic); token.Wait() && token.Error() != nil {
+	if token := c.client.Subscribe(c.readingsTopic, 0, handler); token.Wait() && token.Error() != nil {
 		return token.Error()
 	}
 
-	log.Println("Disconnecting from MQTT broker")
-	client.Disconnect(1000)
+	return nil
+}
+
+// Unsubscribes from the readings MQTT topic.
+func (c *Controller) unsubscribe() error {
+	log.Println("Unsubscribing from readings topic")
+	if token := c.client.Unsubscribe(c.readingsTopic); token.Wait() && token.Error() != nil {
+		return token.Error()
+	}
+
+	return nil
+}
+
+// Initializes the MQTT client, connects to the broker and subscribes to the readings topic.
+func (c *Controller) start() error {
+	err := c.connect()
+	if err != nil {
+		return err
+	}
+
+	err = c.subscribe()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Unsubscribe from the readings topic and disconnect the MQTT client.
+func (c *Controller) stop() error {
+	err := c.unsubscribe()
+	if err != nil {
+		return err
+	}
+
+	c.disconnect()
 
 	return nil
 }
@@ -126,7 +160,7 @@ func (c *Controller) Run() (chan<- bool, <-chan error, *sync.WaitGroup) {
 		log.Println("Controller started")
 		defer wg.Done()
 
-		client, err := c.start()
+		err := c.start()
 		if err != nil {
 			errChan <- err
 			return
@@ -136,7 +170,7 @@ func (c *Controller) Run() (chan<- bool, <-chan error, *sync.WaitGroup) {
 		// Wait for stop signal
 		<-stop
 		log.Println("Stopping controller")
-		err = c.stop(client)
+		err = c.stop()
 		if err != nil {
 			errChan <- err
 		}
