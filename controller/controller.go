@@ -77,7 +77,8 @@ func (c *Controller) start() (mqtt.Client, error) {
 	c.client = client
 	log.Println("Connected to MQTT broker")
 
-	// Subscribe to readings topic
+	// Handler function for incoming readings. This function is called every time
+	// a temperature reading is received on the readings MQTT topic.
 	var handler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
 		go func() {
 			r := Reading{}
@@ -91,6 +92,7 @@ func (c *Controller) start() (mqtt.Client, error) {
 		}()
 	}
 
+	// Subscribe to readings topic
 	log.Println("Subscribing to readings topic")
 	if token := client.Subscribe(c.readingsTopic, 0, handler); token.Wait() && token.Error() != nil {
 		return client, token.Error()
