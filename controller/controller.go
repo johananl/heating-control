@@ -97,13 +97,17 @@ func (c *Controller) subscribe() error {
 	// Handler function for incoming readings. This function is called every time
 	// a temperature reading is received on the readings MQTT topic.
 	var handler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
-		r, err := c.ParseReading(msg.Payload())
-		if err != nil {
-			log.Println("Could not parse reading: ", err.Error())
-			return
-		}
+		// Handle reading in a separate goroutine so that we can process other readings
+		// in parallel.
+		go func() {
+			r, err := c.ParseReading(msg.Payload())
+			if err != nil {
+				log.Println("Could not parse reading: ", err.Error())
+				return
+			}
 
-		c.ProcessReading(r)
+			c.ProcessReading(r)
+		}()
 	}
 
 	// Subscribe to readings topic
