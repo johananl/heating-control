@@ -29,6 +29,13 @@ type Controller struct {
 	client         mqtt.Client
 }
 
+func (c *Controller) ParseReading(s []byte) (Reading, error) {
+	r := Reading{}
+	err := json.Unmarshal(s, &r)
+
+	return r, err
+}
+
 // ProcessReading receives a Reading and executes an appropriate action, if any, based on it.
 // This function contains the controller's "policy" or logic, and is therefore one of the main
 // candidates for optimization.
@@ -90,16 +97,13 @@ func (c *Controller) subscribe() error {
 	// Handler function for incoming readings. This function is called every time
 	// a temperature reading is received on the readings MQTT topic.
 	var handler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
-		go func() {
-			r := Reading{}
-			err := json.Unmarshal(msg.Payload(), &r)
-			if err != nil {
-				log.Println("Error parsing JSON message: ", err)
-				return
-			}
+		r, err := c.ParseReading(msg.Payload())
+		if err != nil {
+			log.Println("Could not parse reading: ", err.Error())
+			return
+		}
 
-			c.ProcessReading(r)
-		}()
+		c.ProcessReading(r)
 	}
 
 	// Subscribe to readings topic
